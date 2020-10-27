@@ -21,9 +21,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-// cub includes
-#include <cub/cub.cuh>
-
 // CMSSW includes
 #include "CUDADataFormats/gpuClusteringConstants.h"
 #include "CUDACore/cudaCheck.h"
@@ -489,8 +486,8 @@ namespace pixelgpudetails {
     }
 
     __shared__ uint32_t ws[32];
-    blockPrefixScan(moduleStart + 1, moduleStart + 1, 1024, ws);
-    blockPrefixScan(moduleStart + 1025, moduleStart + 1025, gpuClustering::MaxNumModules - 1024, ws);
+    cms::cuda::blockPrefixScan(moduleStart + 1, moduleStart + 1, 1024, ws);
+    cms::cuda::blockPrefixScan(moduleStart + 1025, moduleStart + 1025, gpuClustering::MaxNumModules - 1024, ws);
 
     for (int i = first + 1025, iend = gpuClustering::MaxNumModules + 1; i < iend; i += blockDim.x) {
       moduleStart[i] += moduleStart[1024];

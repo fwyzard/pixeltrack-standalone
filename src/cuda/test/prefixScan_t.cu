@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <cub/cub.cuh>
-
 #include "CUDACore/cudaCheck.h"
 #include "CUDACore/prefixScan.h"
 
@@ -16,14 +14,14 @@ __global__ void testPrefixScan(uint32_t size) {
     c[i] = 1;
   __syncthreads();
 
-  blockPrefixScan(c, co, size, ws);
-  blockPrefixScan(c, size, ws);
+  cms::cuda::blockPrefixScan(c, co, size, ws);
+  cms::cuda::blockPrefixScan(c, size, ws);
 
   assert(1 == c[0]);
   assert(1 == co[0]);
   for (auto i = first + 1; i < size; i += blockDim.x) {
     if (c[i] != c[i - 1] + 1)
-      printf("failed %d %d %d: %d %d\n", size, i, blockDim.x, c[i], c[i - 1]);
+      printf("failed at %d %d %d\n", size, i, blockDim.x);
     assert(c[i] == c[i - 1] + 1);
     assert(c[i] == i + 1);
     assert(c[i] = co[i]);
@@ -47,7 +45,7 @@ __global__ void testWarpPrefixScan(uint32_t size) {
   assert(1 == co[0]);
   if (i != 0) {
     if (c[i] != c[i - 1] + 1)
-      printf("failed %d %d %d: %d %d\n", size, i, blockDim.x, c[i], c[i - 1]);
+      printf("failed at %d %d %d\n", size, i, blockDim.x);
     assert(c[i] == c[i - 1] + 1);
     assert(c[i] == i + 1);
     assert(c[i] = co[i]);
@@ -117,33 +115,15 @@ int main() {
     // the block counter
     int32_t *d_pc;
     cudaCheck(cudaMalloc(&d_pc, sizeof(int32_t)));
-    cudaCheck(cudaMemset(d_pc, 0, 4));
+    cudaCheck(cudaMemset(d_pc, 0, sizeof(int32_t)));
 
     nthreads = 1024;
     nblocks = (num_items + nthreads - 1) / nthreads;
-    multiBlockPrefixScan<<<nblocks, nthreads, 0>>>(d_in, d_out1, num_items, d_pc);
+    std::cout << "launch multiBlockPrefixScan " << num_items << ' ' << nblocks << std::endl;
+    cms::cuda::multiBlockPrefixScan<<<nblocks, nthreads, 4 * nblocks>>>(d_in, d_out1, num_items, d_pc);
+    cudaCheck(cudaGetLastError());
     verify<<<nblocks, nthreads, 0>>>(d_out1, num_items);
-    cudaDeviceSynchronize();
-
-    // test cub
-    std::cout << "cub" << std::endl;
-    // Determine temporary device storage requirements for inclusive prefix sum
-    void *d_temp_storage = nullptr;
-    size_t temp_storage_bytes = 0;
-    cub::DeviceScan::InclusiveSum(d_temp_storage, temp_storage_bytes, d_in, d_out2, num_items);
-
-    std::cout << "temp storage " << temp_storage_bytes << std::endl;
-
-    // Allocate temporary storage for inclusive prefix sum
-    // fake larger ws already available
-    temp_storage_bytes *= 8;
-    cudaCheck(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-    std::cout << "temp storage " << temp_storage_bytes << std::endl;
-    // Run inclusive prefix sum
-    CubDebugExit(cub::DeviceScan::InclusiveSum(d_temp_storage, temp_storage_bytes, d_in, d_out2, num_items));
-    std::cout << "temp storage " << temp_storage_bytes << std::endl;
-
-    verify<<<nblocks, nthreads, 0>>>(d_out2, num_items);
+    cudaCheck(cudaGetLastError());
     cudaDeviceSynchronize();
   }  // ksize
   return 0;

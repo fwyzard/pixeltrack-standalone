@@ -22,8 +22,8 @@ void go() {
   constexpr int N = 12000;
   T v[N];
 
-  using Hist = HistoContainer<T, NBINS, N, S>;
-  using Hist4 = HistoContainer<T, NBINS, N, S, uint16_t, 4>;
+  using Hist = cms::cuda::HistoContainer<T, NBINS, N, S>;
+  using Hist4 = cms::cuda::HistoContainer<T, NBINS, N, S, uint16_t, 4>;
   std::cout << "HistoContainer " << Hist::nbits() << ' ' << Hist::nbins() << ' ' << Hist::totbins() << ' '
             << Hist::capacity() << ' ' << (rmax - rmin) / Hist::nbins() << std::endl;
   std::cout << "bins " << int(Hist::bin(0)) << ' ' << int(Hist::bin(rmin)) << ' ' << int(Hist::bin(rmax)) << std::endl;

@@ -17,7 +17,7 @@ __global__ void mykernel(T const* __restrict__ v, uint32_t N) {
   if (threadIdx.x == 0)
     printf("start kernel for %d data\n", N);
 
-  using Hist = HistoContainer<T, NBINS, 12000, S, uint16_t>;
+  using Hist = cms::cuda::HistoContainer<T, NBINS, 12000, S, uint16_t>;
 
   __shared__ Hist hist;
   __shared__ typename Hist::Counter ws[32];
@@ -108,7 +108,7 @@ void go() {
   auto v_d = cms::cuda::make_device_unique<T[]>(N, nullptr);
   assert(v_d.get());
 
-  using Hist = HistoContainer<T, NBINS, N, S>;
+  using Hist = cms::cuda::HistoContainer<T, NBINS, N, S>;
   std::cout << "HistoContainer " << Hist::nbits() << ' ' << Hist::nbins() << ' ' << Hist::capacity() << ' '
             << (rmax - rmin) / Hist::nbins() << std::endl;
   std::cout << "bins " << int(Hist::bin(0)) << ' ' << int(Hist::bin(rmin)) << ' ' << int(Hist::bin(rmax)) << std::endl;

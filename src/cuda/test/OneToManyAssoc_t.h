@@ -17,12 +17,10 @@
 constexpr uint32_t MaxElem = 64000;
 constexpr uint32_t MaxTk = 8000;
 constexpr uint32_t MaxAssocs = 4 * MaxTk;
-using Assoc = OneToManyAssoc<uint16_t, MaxElem, MaxAssocs>;
 
-using SmallAssoc = OneToManyAssoc<uint16_t, 128, MaxAssocs>;
-
-using Multiplicity = OneToManyAssoc<uint16_t, 8, MaxTk>;
-
+using Assoc = cms::cuda::OneToManyAssoc<uint16_t, MaxElem, MaxAssocs>;
+using SmallAssoc = cms::cuda::OneToManyAssoc<uint16_t, 128, MaxAssocs>;
+using Multiplicity = cms::cuda::OneToManyAssoc<uint16_t, 8, MaxTk>;
 using TK = std::array<uint16_t, 4>;
 
 __global__ void countMultiLocal(TK const* __restrict__ tk, Multiplicity* __restrict__ assoc, int32_t n) {
@@ -117,9 +115,9 @@ int main() {
   assert(gridDim.z == 1);
 #endif
 
-  std::cout << "OneToManyAssoc " << Assoc::nbins() << ' ' << Assoc::capacity() << ' ' << Assoc::wsSize() << std::endl;
-  std::cout << "OneToManyAssoc (small) " << SmallAssoc::nbins() << ' ' << SmallAssoc::capacity() << ' '
-            << SmallAssoc::wsSize() << std::endl;
+  std::cout << "OneToManyAssoc " << sizeof(Assoc) << ' ' << Assoc::nbins() << ' ' << Assoc::capacity() << std::endl;
+  std::cout << "OneToManyAssoc (small) " << sizeof(SmallAssoc) << ' ' << SmallAssoc::nbins() << ' '
+            << SmallAssoc::capacity() << std::endl;
 
   std::mt19937 eng;
 
@@ -168,8 +166,6 @@ int main() {
   assert(v_d.get());
   auto a_d = cms::cuda::make_device_unique<Assoc[]>(1, nullptr);
   auto sa_d = cms::cuda::make_device_unique<SmallAssoc[]>(1, nullptr);
-  auto ws_d = cms::cuda::make_device_unique<uint8_t[]>(Assoc::wsSize(), nullptr);
-
   cudaCheck(cudaMemcpy(v_d.get(), tr.data(), N * sizeof(std::array<uint16_t, 4>), cudaMemcpyHostToDevice));
 #else
   auto a_d = std::make_unique<Assoc>();
@@ -185,7 +181,7 @@ int main() {
 
   count<<<nBlocks, nThreads>>>(v_d.get(), a_d.get(), N);
 
-  cms::cuda::launchFinalize(a_d.get(), ws_d.get(), 0);
+  cms::cuda::launchFinalize(a_d.get(), 0);
   verify<<<1, 1>>>(a_d.get());
   fill<<<nBlocks, nThreads>>>(v_d.get(), a_d.get(), N);
 #else
@@ -286,8 +282,8 @@ int main() {
   countMultiLocal<<<nBlocks, nThreads>>>(v_d.get(), m2_d.get(), N);
   verifyMulti<<<1, Multiplicity::totbins()>>>(m1_d.get(), m2_d.get());
 
-  cms::cuda::launchFinalize(m1_d.get(), ws_d.get(), 0);
-  cms::cuda::launchFinalize(m2_d.get(), ws_d.get(), 0);
+  cms::cuda::launchFinalize(m1_d.get(), 0);
+  cms::cuda::launchFinalize(m2_d.get(), 0);
   verifyMulti<<<1, Multiplicity::totbins()>>>(m1_d.get(), m2_d.get());
 
   cudaCheck(cudaGetLastError());

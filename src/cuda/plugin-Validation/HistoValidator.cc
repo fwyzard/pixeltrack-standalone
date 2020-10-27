@@ -1,10 +1,8 @@
 #include "CUDACore/Product.h"
 #include "CUDACore/ScopedContext.h"
-#include "CUDADataFormats/PixelTrackHeterogeneous.h"
 #include "CUDADataFormats/SiPixelClustersCUDA.h"
 #include "CUDADataFormats/SiPixelDigisCUDA.h"
 #include "CUDADataFormats/TrackingRecHit2DCUDA.h"
-#include "CUDADataFormats/ZVertexHeterogeneous.h"
 #include "Framework/EventSetup.h"
 #include "Framework/Event.h"
 #include "Framework/PluginFactory.h"
@@ -29,8 +27,6 @@ private:
   edm::EDGetTokenT<cms::cuda::Product<SiPixelDigisCUDA>> digiToken_;
   edm::EDGetTokenT<cms::cuda::Product<SiPixelClustersCUDA>> clusterToken_;
   edm::EDGetTokenT<cms::cuda::Product<TrackingRecHit2DCUDA>> hitToken_;
-  edm::EDGetTokenT<PixelTrackHeterogeneous> trackToken_;
-  edm::EDGetTokenT<ZVertexHeterogeneous> vertexToken_;
 
   uint32_t nDigis;
   uint32_t nModules;
@@ -64,29 +60,12 @@ std::map<std::string, SimpleAtomicHisto> HistoValidator::histos = {
     {"hit_charge", SimpleAtomicHisto(400, 0, 4e6)},
     {"hit_sizex", SimpleAtomicHisto(800, 0, 800)},
     {"hit_sizey", SimpleAtomicHisto(800, 0, 800)},
-    {"track_n", SimpleAtomicHisto(150, 0, 15000)},
-    {"track_nhits", SimpleAtomicHisto(3, 3, 6)},
-    {"track_chi2", SimpleAtomicHisto(100, 0, 40)},
-    {"track_pt", SimpleAtomicHisto(400, 0, 400)},
-    {"track_eta", SimpleAtomicHisto(100, -3, 3)},
-    {"track_phi", SimpleAtomicHisto(100, -3.15, 3.15)},
-    {"track_tip", SimpleAtomicHisto(100, -1, 1)},
-    {"track_tip_zoom", SimpleAtomicHisto(100, -0.05, 0.05)},
-    {"track_zip", SimpleAtomicHisto(100, -15, 15)},
-    {"track_zip_zoom", SimpleAtomicHisto(100, -0.1, 0.1)},
-    {"track_quality", SimpleAtomicHisto(6, 0, 6)},
-    {"vertex_n", SimpleAtomicHisto(60, 0, 60)},
-    {"vertex_z", SimpleAtomicHisto(100, -15, 15)},
-    {"vertex_chi2", SimpleAtomicHisto(100, 0, 40)},
-    {"vertex_ndof", SimpleAtomicHisto(170, 0, 170)},
-    {"vertex_pt2", SimpleAtomicHisto(100, 0, 4000)}};
+};
 
 HistoValidator::HistoValidator(edm::ProductRegistry& reg)
     : digiToken_(reg.consumes<cms::cuda::Product<SiPixelDigisCUDA>>()),
       clusterToken_(reg.consumes<cms::cuda::Product<SiPixelClustersCUDA>>()),
-      hitToken_(reg.consumes<cms::cuda::Product<TrackingRecHit2DCUDA>>()),
-      trackToken_(reg.consumes<PixelTrackHeterogeneous>()),
-      vertexToken_(reg.consumes<ZVertexHeterogeneous>()) {}
+      hitToken_(reg.consumes<cms::cuda::Product<TrackingRecHit2DCUDA>>()) {}
 
 void HistoValidator::acquire(const edm::Event& iEvent,
                              const edm::EventSetup& iSetup,
@@ -145,41 +124,6 @@ void HistoValidator::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   h_globalCoord.reset();
   h_charge.reset();
   h_size.reset();
-
-  {
-    auto const& tracks = iEvent.get(trackToken_);
-
-    int nTracks = 0;
-    for (int i = 0; i < tracks->stride(); ++i) {
-      if (tracks->nHits(i) > 0) {
-        ++nTracks;
-        histos["track_nhits"].fill(tracks->nHits(i));
-        histos["track_chi2"].fill(tracks->chi2(i));
-        histos["track_pt"].fill(tracks->pt(i));
-        histos["track_eta"].fill(tracks->eta(i));
-        histos["track_phi"].fill(tracks->phi(i));
-        histos["track_tip"].fill(tracks->tip(i));
-        histos["track_tip_zoom"].fill(tracks->tip(i));
-        histos["track_zip"].fill(tracks->zip(i));
-        histos["track_zip_zoom"].fill(tracks->zip(i));
-        histos["track_quality"].fill(tracks->quality(i));
-      }
-    }
-
-    histos["track_n"].fill(nTracks);
-  }
-
-  {
-    auto const& vertices = iEvent.get(vertexToken_);
-
-    histos["vertex_n"].fill(vertices->nvFinal);
-    for (uint32_t i = 0; i < vertices->nvFinal; ++i) {
-      histos["vertex_z"].fill(vertices->zv[i]);
-      histos["vertex_chi2"].fill(vertices->chi2[i]);
-      histos["vertex_ndof"].fill(vertices->ndof[i]);
-      histos["vertex_pt2"].fill(vertices->ptv2[i]);
-    }
-  }
 }
 
 void HistoValidator::endJob() {
