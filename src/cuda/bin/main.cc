@@ -97,19 +97,13 @@ int main(int argc, char** argv) {
   std::vector<std::string> edmodules;
   std::vector<std::string> esmodules;
   if (not empty) {
-    edmodules = {
-        "BeamSpotToCUDA", "SiPixelRawToClusterCUDA", "SiPixelRecHitCUDA", "CAHitNtupletCUDA", "PixelVertexProducerCUDA"};
+    edmodules = {"BeamSpotToCUDA", "SiPixelRawToClusterCUDA", "SiPixelRecHitCUDA"};
     esmodules = {"BeamSpotESProducer",
                  "SiPixelFedCablingMapGPUWrapperESProducer",
                  "SiPixelGainCalibrationForHLTGPUESProducer",
                  "PixelCPEFastESProducer"};
     if (transfer) {
-      auto capos = std::find(edmodules.begin(), edmodules.end(), "CAHitNtupletCUDA");
-      assert(capos != edmodules.end());
-      edmodules.insert(capos + 1, "PixelTrackSoAFromCUDA");
-      auto vertpos = std::find(edmodules.begin(), edmodules.end(), "PixelVertexProducerCUDA");
-      assert(vertpos != edmodules.end());
-      edmodules.insert(vertpos + 1, "PixelVertexSoAFromCUDA");
+      // not supported yet
     }
     if (validation) {
       edmodules.emplace_back("CountValidator");
