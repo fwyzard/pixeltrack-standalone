@@ -32,15 +32,15 @@ namespace cms {
      * Computes the range of the element(s) global index(es) in grid.
      * Warning: the max index is not truncated by the max number of elements of interest.
      */
-    template <typename T_Acc, typename T_Dim = alpaka::dim::Dim<T_Acc>>
+    template <typename T_Acc, typename T_Dim = alpaka::Dim<T_Acc>>
     ALPAKA_FN_ACC std::pair<Vec<T_Dim>, Vec<T_Dim>> element_global_index_range(const T_Acc& acc) {
       Vec<T_Dim> firstElementIdxGlobalVec = Vec<T_Dim>::zeros();
       Vec<T_Dim> endElementIdxUncutGlobalVec = Vec<T_Dim>::zeros();
 
       for (typename T_Dim::value_type dimIndex(0); dimIndex < T_Dim::value; ++dimIndex) {
         // Global thread index in grid (along dimension dimIndex).
-        const uint32_t threadIdxGlobal(alpaka::idx::getIdx<alpaka::Grid, alpaka::Threads>(acc)[dimIndex]);
-        const uint32_t threadDimension(alpaka::workdiv::getWorkDiv<alpaka::Thread, alpaka::Elems>(acc)[dimIndex]);
+        const uint32_t threadIdxGlobal(alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[dimIndex]);
+        const uint32_t threadDimension(alpaka::getWorkDiv<alpaka::Thread, alpaka::Elems>(acc)[dimIndex]);
 
         // Global element index in grid (along dimension dimIndex).
         // Obviously relevant for CPU only.
@@ -62,7 +62,7 @@ namespace cms {
     template <typename T_Acc, typename T_Dim>
     ALPAKA_FN_ACC std::pair<Vec<T_Dim>, Vec<T_Dim>> element_global_index_range_truncated(
         const T_Acc& acc, const Vec<T_Dim>& maxNumberOfElements) {
-      static_assert(alpaka::dim::Dim<T_Acc>::value == T_Dim::value,
+      static_assert(alpaka::Dim<T_Acc>::value == T_Dim::value,
                     "Accelerator and maxNumberOfElements need to have same dimension.");
       auto&& [firstElementIdxGlobalVec, endElementIdxGlobalVec] = element_global_index_range(acc);
 

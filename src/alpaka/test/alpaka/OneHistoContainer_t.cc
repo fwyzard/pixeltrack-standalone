@@ -13,17 +13,17 @@ struct mykernel {
     assert(v);
     assert(N == 12000);
 
-    const uint32_t threadIdxLocal(alpaka::idx::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
+    const uint32_t threadIdxLocal(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
     if (threadIdxLocal == 0) {
       printf("start kernel for %d data\n", N);
     }
 
     using Hist = cms::alpakatools::HistoContainer<T, NBINS, 12000, S, uint16_t>;
 
-    auto&& hist = alpaka::block::shared::st::allocVar<Hist, __COUNTER__>(acc);
-    auto&& ws = alpaka::block::shared::st::allocVar<typename Hist::Counter[32], __COUNTER__>(acc);
+    auto&& hist = alpaka::declareSharedVar<Hist, __COUNTER__>(acc);
+    auto&& ws = alpaka::declareSharedVar<typename Hist::Counter[32], __COUNTER__>(acc);
 
-    const uint32_t blockDimension(alpaka::workdiv::getWorkDiv<alpaka::Block, alpaka::Elems>(acc)[0u]);
+    const uint32_t blockDimension(alpaka::getWorkDiv<alpaka::Block, alpaka::Elems>(acc)[0u]);
     const auto& [firstElementIdxNoStride, endElementIdxNoStride] = cms::alpakatools::element_global_index_range(acc);
 
     // set off zero
@@ -34,7 +34,7 @@ struct mykernel {
         hist.off[j] = 0;
       }
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     // set bins zero
     for (uint32_t threadIdx = firstElementIdxNoStride[0u], endElementIdx = endElementIdxNoStride[0u];
@@ -44,7 +44,7 @@ struct mykernel {
         hist.bins[j] = 0;
       }
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     // count
     for (uint32_t threadIdx = firstElementIdxNoStride[0u], endElementIdx = endElementIdxNoStride[0u]; threadIdx < N;
@@ -53,14 +53,14 @@ struct mykernel {
         hist.count(acc, v[j]);
       }
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     assert(0 == hist.size());
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     // finalize
     hist.finalize(acc, ws);
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     if (threadIdxLocal == 0) {
       printf("hist.size() = %u.\n", hist.size());
@@ -75,12 +75,12 @@ struct mykernel {
         assert(hist.off[j] <= hist.off[j + 1]);
       }
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     if (threadIdxLocal < 32) {
       ws[threadIdxLocal] = 0;  // used by prefix scan...
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     // fill
     for (uint32_t threadIdx = firstElementIdxNoStride[0u], endElementIdx = endElementIdxNoStride[0u]; threadIdx < N;
@@ -89,7 +89,7 @@ struct mykernel {
         hist.fill(acc, v[j], j);
       }
     }
-    alpaka::block::sync::syncBlockThreads(acc);
+    alpaka::syncBlockThreads(acc);
 
     assert(0 == hist.off[0]);
     assert(N == hist.size());
@@ -163,9 +163,9 @@ void go(const DevHost& host,
             << (rmax - rmin) / Hist::nbins() << std::endl;
   std::cout << "bins " << int(Hist::bin(0)) << ' ' << int(Hist::bin(rmin)) << ' ' << int(Hist::bin(rmax)) << std::endl;
 
-  auto v_hbuf = alpaka::mem::buf::alloc<T, Idx>(host, N);
-  auto v = alpaka::mem::view::getPtrNative(v_hbuf);
-  auto v_dbuf = alpaka::mem::buf::alloc<T, Idx>(device, N);
+  auto v_hbuf = alpaka::allocBuf<T, Idx>(host, N);
+  auto v = alpaka::getPtrNative(v_hbuf);
+  auto v_dbuf = alpaka::allocBuf<T, Idx>(device, N);
 
   for (int it = 0; it < 5; ++it) {
     for (long long j = 0; j < N; j++)
@@ -174,22 +174,22 @@ void go(const DevHost& host,
       for (long long j = N / 2; j < N / 2 + N / 4; j++)
         v[j] = 4;
 
-    alpaka::mem::view::copy(queue, v_dbuf, v_hbuf, N);
+    alpaka::memcpy(queue, v_dbuf, v_hbuf, N);
 
     const Vec1& threadsPerBlockOrElementsPerThread(Vec1::all(256));
     const Vec1& blocksPerGrid(Vec1::all(1));
     const WorkDiv1& workDiv = cms::alpakatools::make_workdiv(blocksPerGrid, threadsPerBlockOrElementsPerThread);
-    alpaka::queue::enqueue(queue,
-                           alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
-                               workDiv, mykernel<NBINS, S, DELTA>(), alpaka::mem::view::getPtrNative(v_dbuf), N));
+    alpaka::enqueue(queue,
+                           alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
+                               workDiv, mykernel<NBINS, S, DELTA>(), alpaka::getPtrNative(v_dbuf), N));
   }
-  alpaka::wait::wait(queue);
+  alpaka::wait(queue);
 }
 
 int main() {
-  const DevHost host(alpaka::pltf::getDevByIdx<PltfHost>(0u));
+  const DevHost host(alpaka::getDevByIdx<PltfHost>(0u));
   const ALPAKA_ACCELERATOR_NAMESPACE::DevAcc1 device(
-      alpaka::pltf::getDevByIdx<ALPAKA_ACCELERATOR_NAMESPACE::PltfAcc1>(0u));
+      alpaka::getDevByIdx<ALPAKA_ACCELERATOR_NAMESPACE::PltfAcc1>(0u));
   ALPAKA_ACCELERATOR_NAMESPACE::Queue queue(device);
 
   go<int16_t>(host, device, queue);

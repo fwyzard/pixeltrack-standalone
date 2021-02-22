@@ -23,7 +23,7 @@ namespace cms {
                                     T const *__restrict__ v,
                                     uint32_t const *__restrict__ offsets) const {
         const uint32_t nt = offsets[nh];
-        const uint32_t gridDimension(alpaka::workdiv::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
+        const uint32_t gridDimension(alpaka::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
         const auto &[firstElementIdxNoStride, endElementIdxNoStride] =
             cms::alpakatools::element_global_index_range_truncated(acc, Vec1::all(nt));
         for (uint32_t threadIdx = firstElementIdxNoStride[0u], endElementIdx = endElementIdxNoStride[0u];
@@ -49,7 +49,7 @@ namespace cms {
                                     T const *__restrict__ v,
                                     uint32_t const *__restrict__ offsets) const {
         const uint32_t nt = offsets[nh];
-        const uint32_t gridDimension(alpaka::workdiv::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
+        const uint32_t gridDimension(alpaka::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
         const auto &[firstElementIdxNoStride, endElementIdxNoStride] =
             cms::alpakatools::element_global_index_range_truncated(acc, Vec1::all(nt));
 
@@ -94,15 +94,15 @@ namespace cms {
       const Vec1 blocksPerGrid(nblocks);
 
       const WorkDiv1 &workDiv = cms::alpakatools::make_workdiv(blocksPerGrid, threadsPerBlockOrElementsPerThread);
-      alpaka::queue::enqueue(queue,
-                             alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
+      alpaka::enqueue(queue,
+                             alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
                                  workDiv, multiBlockPrefixScanFirstStep<uint32_t>(), poff, poff, num_items));
 
       const WorkDiv1 &workDivWith1Block =
           cms::alpakatools::make_workdiv(Vec1::all(1), threadsPerBlockOrElementsPerThread);
-      alpaka::queue::enqueue(
+      alpaka::enqueue(
           queue,
-          alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
+          alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
               workDivWith1Block, multiBlockPrefixScanSecondStep<uint32_t>(), poff, poff, num_items, nblocks));
     }
 
@@ -120,16 +120,16 @@ namespace cms {
       const Vec1 threadsPerBlockOrElementsPerThread(nthreads);
       const WorkDiv1 &workDiv = cms::alpakatools::make_workdiv(blocksPerGrid, threadsPerBlockOrElementsPerThread);
 
-      alpaka::queue::enqueue(
-          queue, alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(workDiv, launchZero(), h));
+      alpaka::enqueue(
+          queue, alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(workDiv, launchZero(), h));
 
-      alpaka::queue::enqueue(queue,
-                             alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
+      alpaka::enqueue(queue,
+                             alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
                                  workDiv, countFromVector(), h, nh, v, offsets));
       launchFinalize(h, queue);
 
-      alpaka::queue::enqueue(queue,
-                             alpaka::kernel::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
+      alpaka::enqueue(queue,
+                             alpaka::createTaskKernel<ALPAKA_ACCELERATOR_NAMESPACE::Acc1>(
                                  workDiv, fillFromVector(), h, nh, v, offsets));
     }
 
@@ -215,18 +215,18 @@ namespace cms {
       template <typename T_Acc>
       ALPAKA_FN_ACC ALPAKA_FN_INLINE void add(const T_Acc &acc, CountersOnly const &co) {
         for (uint32_t i = 0; i < totbins(); ++i) {
-          alpaka::atomic::atomicOp<alpaka::atomic::op::Add>(acc, off + i, co.off[i]);
+          alpaka::atomicOp<alpaka::AtomicAdd>(acc, off + i, co.off[i]);
         }
       }
 
       template <typename T_Acc>
       static ALPAKA_FN_ACC ALPAKA_FN_INLINE uint32_t atomicIncrement(const T_Acc &acc, Counter &x) {
-        return alpaka::atomic::atomicOp<alpaka::atomic::op::Add>(acc, &x, 1u);
+        return alpaka::atomicOp<alpaka::AtomicAdd>(acc, &x, 1u);
       }
 
       template <typename T_Acc>
       static ALPAKA_FN_HOST_ACC ALPAKA_FN_INLINE uint32_t atomicDecrement(const T_Acc &acc, Counter &x) {
-        return alpaka::atomic::atomicOp<alpaka::atomic::op::Sub>(acc, &x, 1u);
+        return alpaka::atomicOp<alpaka::AtomicSub>(acc, &x, 1u);
       }
 
       template <typename T_Acc>
@@ -270,7 +270,7 @@ namespace cms {
           return;
         }
 
-        const uint32_t gridDimension(alpaka::workdiv::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
+        const uint32_t gridDimension(alpaka::getWorkDiv<alpaka::Grid, alpaka::Elems>(acc)[0u]);
         const auto &[firstElementIdxNoStride, endElementIdxNoStride] =
             cms::alpakatools::element_global_index_range_truncated(acc, Vec1::all(totbins()));
 
