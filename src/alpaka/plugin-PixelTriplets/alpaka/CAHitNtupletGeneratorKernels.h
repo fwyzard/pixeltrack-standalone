@@ -185,7 +185,6 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
           device_hitTuple_apc_{cms::alpakatools::allocDeviceBuf<cms::alpakatools::AtomicPairCounter>(1u)},
           device_hitToTuple_apc_{cms::alpakatools::allocDeviceBuf<cms::alpakatools::AtomicPairCounter>(1u)},
           device_nCells_{cms::alpakatools::allocDeviceBuf<uint32_t>(1u)} {
-      
       alpaka::memset(queue, counters_, 0, 1u);
 
       alpaka::memset(queue, device_nCells_, 0, 1u);

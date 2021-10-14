@@ -14,7 +14,8 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
 
     explicit TrackingRecHit2DAlpaka(uint32_t nHits,
                                     const pixelCPEforGPU::ParamsOnGPU* cpeParams,
-                                    const uint32_t* hitsModuleStart, Queue& queue)
+                                    const uint32_t* hitsModuleStart,
+                                    Queue& queue)
         : m_nHits(nHits),
           // NON-OWNING DEVICE POINTERS:
           m_hitsModuleStart(hitsModuleStart),
