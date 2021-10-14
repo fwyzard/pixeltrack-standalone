@@ -29,9 +29,9 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
     TrackingRecHit2DAlpaka PixelRecHitGPUKernel::makeHitsAsync(SiPixelDigisAlpaka const& digis_d,
                                                                SiPixelClustersAlpaka const& clusters_d,
                                                                BeamSpotAlpaka const& bs_d,
-                                                               pixelCPEforGPU::ParamsOnGPU const* cpeParams) const {
+                                                               pixelCPEforGPU::ParamsOnGPU const* cpeParams, Queue& queue) const {
       auto nHits = clusters_d.nClusters();
-      TrackingRecHit2DAlpaka hits_d(nHits, cpeParams, clusters_d.clusModuleStart());
+      TrackingRecHit2DAlpaka hits_d(nHits, cpeParams, clusters_d.clusModuleStart(), queue);
 
       const int threadsPerBlockOrElementsPerThread = 128;
       const int blocks = digis_d.nModules();  // active modules (with digis)
@@ -41,9 +41,6 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
 #ifdef GPU_DEBUG
       std::cout << "launching getHits kernel for " << blocks << " blocks" << std::endl;
 #endif
-
-      Queue queue(device);
-
       if (blocks) {  // protect from empty events
         alpaka::enqueue(queue,
                         alpaka::createTaskKernel<Acc1>(getHitsWorkDiv,

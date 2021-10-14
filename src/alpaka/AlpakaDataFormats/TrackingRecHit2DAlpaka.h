@@ -14,7 +14,7 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
 
     explicit TrackingRecHit2DAlpaka(uint32_t nHits,
                                     const pixelCPEforGPU::ParamsOnGPU* cpeParams,
-                                    const uint32_t* hitsModuleStart)
+                                    const uint32_t* hitsModuleStart, Queue& queue)
         : m_nHits(nHits),
           // NON-OWNING DEVICE POINTERS:
           m_hitsModuleStart(hitsModuleStart),
@@ -72,7 +72,6 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
 #undef SET
 
       // SoA view on device:
-      Queue queue(device);
       auto view_h{cms::alpakatools::createHostView<TrackingRecHit2DSOAView>(&view, 1u)};
       alpaka::memcpy(queue, m_view, view_h, 1u);
       alpaka::wait(queue);
