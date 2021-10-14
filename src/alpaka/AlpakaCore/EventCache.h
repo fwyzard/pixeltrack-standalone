@@ -20,7 +20,6 @@ namespace cms {
   namespace alpakatools {
     class EventCache {
     public:
-
       using BareEvent = SharedEventPtr::element_type;
 
       EventCache();
@@ -50,7 +49,7 @@ namespace cms {
           event = makeOrGet(dev, acc);
           completed = eventWorkHasCompleted(*(event.get()));
           if (not completed) {
-              ptrs.emplace_back(std::move(event));
+            ptrs.emplace_back(std::move(event));
           }
         } while (not completed);
         return event;
@@ -74,7 +73,7 @@ namespace cms {
       public:
         Deleter() = default;
         Deleter(int d) : device_{d} {}
-        void operator()(alpaka::Event<Queue> *event) const {
+        void operator()(alpaka::Event<Queue>* event) const {
           if (device_ != -1) {
             cms::alpakatools::ScopedSetDevice deviceGuard{device_};
             // event->~(alpaka::Event<Queue>(acc));  //TODO destructor of event

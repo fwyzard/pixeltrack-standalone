@@ -46,9 +46,9 @@ namespace cms {
 
         template <typename T_Acc>
         ScopedContextBase(T_Acc acc, const ProductBase& data) : currentDevice_(data.device()) {
-      #ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
+#ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
           cudaSetDevice(currentDevice_);
-      #endif
+#endif
           if (data.mayReuseStream()) {
             stream_ = data.streamPtr();
           } else {
@@ -57,17 +57,18 @@ namespace cms {
         }
 
         explicit ScopedContextBase(int device, SharedStreamPtr stream)
-        : currentDevice_(device), stream_(std::move(stream)) {
-        #ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
+            : currentDevice_(device), stream_(std::move(stream)) {
+#ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
           cudaSetDevice(currentDevice_);
-        #endif
+#endif
         }
 
         template <typename T_Acc>
-        explicit ScopedContextBase(T_Acc acc, edm::StreamID streamID) : currentDevice_(cms::alpakatools::chooseDevice(streamID)) {
-        #ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
+        explicit ScopedContextBase(T_Acc acc, edm::StreamID streamID)
+            : currentDevice_(cms::alpakatools::chooseDevice(streamID)) {
+#ifdef ALPAKA_ACC_GPU_CUDA_ENABLED
           cudaSetDevice(currentDevice_);
-        #endif
+#endif
           stream_ = getStreamCache().get(acc);
         }
 
@@ -126,24 +127,30 @@ namespace cms {
     public:
       /// Constructor to create a new CUDA stream (no need for context beyond acquire())
       template <typename T_Acc>
-      explicit ScopedContextAcquire(T_Acc acc,edm::StreamID streamID, edm::WaitingTaskWithArenaHolder waitingTaskHolder)
+      explicit ScopedContextAcquire(T_Acc acc,
+                                    edm::StreamID streamID,
+                                    edm::WaitingTaskWithArenaHolder waitingTaskHolder)
           : ScopedContextGetterBase(acc, streamID), holderHelper_{std::move(waitingTaskHolder)} {}
 
       // /// Constructor to create a new CUDA stream, and the context is needed after acquire()
       template <typename T_Acc>
-      explicit ScopedContextAcquire(T_Acc acc, edm::StreamID streamID,
+      explicit ScopedContextAcquire(T_Acc acc,
+                                    edm::StreamID streamID,
                                     edm::WaitingTaskWithArenaHolder waitingTaskHolder,
                                     ContextState& state)
           : ScopedContextGetterBase(acc, streamID), holderHelper_{std::move(waitingTaskHolder)}, contextState_{&state} {}
 
       // /// Constructor to (possibly) re-use a CUDA stream (no need for context beyond acquire())
       template <typename T_Acc>
-      explicit ScopedContextAcquire(T_Acc acc, const ProductBase& data, edm::WaitingTaskWithArenaHolder waitingTaskHolder)
+      explicit ScopedContextAcquire(T_Acc acc,
+                                    const ProductBase& data,
+                                    edm::WaitingTaskWithArenaHolder waitingTaskHolder)
           : ScopedContextGetterBase(acc, data), holderHelper_{std::move(waitingTaskHolder)} {}
 
       // /// Constructor to (possibly) re-use a CUDA stream, and the context is needed after acquire()
       template <typename T_Acc>
-      explicit ScopedContextAcquire(T_Acc acc, const ProductBase& data,
+      explicit ScopedContextAcquire(T_Acc acc,
+                                    const ProductBase& data,
                                     edm::WaitingTaskWithArenaHolder waitingTaskHolder,
                                     ContextState& state)
           : ScopedContextGetterBase(acc, data), holderHelper_{std::move(waitingTaskHolder)}, contextState_{&state} {}

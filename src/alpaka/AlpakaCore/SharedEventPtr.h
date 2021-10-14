@@ -14,7 +14,7 @@ namespace cms {
 #elif defined ALPAKA_ACC_CPU_B_TBB_T_SEQ_ENABLED
     using Queue = alpaka::QueueCpuNonBlocking;
 #else
-  using Queue = alpaka::QueueCpuBlocking;
+    using Queue = alpaka::QueueCpuBlocking;
 #endif
     using SharedEventPtr = std::shared_ptr<std::remove_pointer_t<alpaka::Event<Queue>>>;
   }  // namespace alpakatools

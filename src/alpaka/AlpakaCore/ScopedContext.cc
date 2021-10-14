@@ -34,11 +34,11 @@ namespace cms::alpakatools {
 
     void ScopedContextHolderHelper::enqueueCallback(int device, Queue stream) {
       alpaka::enqueue(stream, [this, device]() {
-          auto data = new CallbackData{waitingTaskHolder_, device};
-          std::unique_ptr<CallbackData> guard{reinterpret_cast<CallbackData*>(data)};
-          edm::WaitingTaskWithArenaHolder& waitingTaskHolder = guard->holder;
-          int device2 = guard->device;
-          waitingTaskHolder.doneWaiting(nullptr);
+        auto data = new CallbackData{waitingTaskHolder_, device};
+        std::unique_ptr<CallbackData> guard{reinterpret_cast<CallbackData*>(data)};
+        edm::WaitingTaskWithArenaHolder& waitingTaskHolder = guard->holder;
+        int device2 = guard->device;
+        waitingTaskHolder.doneWaiting(nullptr);
       });
     }
   }  // namespace impl
@@ -66,7 +66,7 @@ namespace cms::alpakatools {
     // elsewhere as well.
     // cudaEventRecord(event_.get(), stream());
     //  alpaka::enqueue(stream(), getEvent(ALPAKA_ACCELERATOR_NAMESPACE::DevAcc1).get());
-     //TODO
+    //TODO
   }
 
   ////////////////////

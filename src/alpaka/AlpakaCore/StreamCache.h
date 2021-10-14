@@ -26,9 +26,8 @@ namespace cms {
       template <typename T_Acc>
       ALPAKA_FN_HOST SharedStreamPtr get(T_Acc acc) {
         const auto dev = currentDevice();
-        return cache_[dev].makeOrGet([dev, acc]() {
-          return std::make_unique<Queue>(createQueueNonBlocking<T_Acc>(acc));
-        });
+        return cache_[dev].makeOrGet(
+            [dev, acc]() { return std::make_unique<Queue>(createQueueNonBlocking<T_Acc>(acc)); });
       }
 
     private:
