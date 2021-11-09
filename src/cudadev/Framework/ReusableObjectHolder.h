@@ -72,9 +72,9 @@
 #include <atomic>
 #include <cassert>
 #include <memory>
+#include <utility>
 
-#include <tbb/task.h>
-#include <tbb/concurrent_queue.h>
+#include <boost/lockfree/stack.hpp>
 
 namespace edm {
   template <class T, class Deleter = std::default_delete<T>>
@@ -82,25 +82,25 @@ namespace edm {
   public:
     using deleter_type = Deleter;
 
-    ReusableObjectHolder() : m_outstandingObjects(0) {}
-    ReusableObjectHolder(ReusableObjectHolder&& iOther)
-        : m_availableQueue(std::move(iOther.m_availableQueue)), m_outstandingObjects(0) {
-      assert(0 == iOther.m_outstandingObjects);
-    }
+    ReusableObjectHolder() : m_availableQueue(64), m_outstandingObjects(0) {}
+
+    ReusableObjectHolder(ReusableObjectHolder const& iOther) = delete;
+    ReusableObjectHolder(ReusableObjectHolder&& iOther) = delete;
+
     ~ReusableObjectHolder() {
       assert(0 == m_outstandingObjects);
-      std::unique_ptr<T, Deleter> item;
-      while (m_availableQueue.try_pop(item)) {
-        item.reset();
+      std::pair<T*, Deleter> item;
+      while (m_availableQueue.pop(item)) {
+        item.second(item.first);
       }
     }
 
     ///Adds the item to the cache.
     /// Use this function if you know ahead of time
     /// how many cached items you will need.
-    void add(std::unique_ptr<T, Deleter> iItem) {
-      if (nullptr != iItem) {
-        m_availableQueue.push(std::move(iItem));
+    void add(std::pair<T*, Deleter> iItem) {
+      if (nullptr != iItem.first) {
+        m_availableQueue.push(iItem);
       }
     }
 
@@ -108,18 +108,17 @@ namespace edm {
     /// if none are available, returns an empty shared_ptr.
     /// Use this function in conjunction with add()
     std::shared_ptr<T> tryToGet() {
-      std::unique_ptr<T, Deleter> item;
-      m_availableQueue.try_pop(item);
-      if (nullptr == item) {
+      std::pair<T*, Deleter> item;
+      m_availableQueue.pop(item);
+      if (nullptr == item.first) {
         return std::shared_ptr<T>{};
       }
       //instead of deleting, hand back to queue
       auto pHolder = this;
-      auto deleter = item.get_deleter();
+      auto deleter = item.second;
       ++m_outstandingObjects;
-      return std::shared_ptr<T>{item.release(), [pHolder, deleter](T* iItem) {
-                                  pHolder->addBack(std::unique_ptr<T, Deleter>{iItem, deleter});
-                                }};
+      return std::shared_ptr<T>{item.first,
+                                [pHolder, deleter](T* iItem) { pHolder->addBack(std::make_pair(iItem, deleter)); }};
     }
 
     ///If there isn't an object already available, creates a new one using iFunc
@@ -146,20 +145,23 @@ namespace edm {
     }
 
   private:
-    std::unique_ptr<T> makeUnique(T* ptr) {
+    std::pair<T*, Deleter> makeUnique(T* ptr) {
       static_assert(std::is_same_v<Deleter, std::default_delete<T>>,
                     "Generating functions returning raw pointers are supported only with std::default_delete<T>");
-      return std::unique_ptr<T>{ptr};
+      return std::make_pair(ptr, Deleter{});
     }
 
-    std::unique_ptr<T, Deleter> makeUnique(std::unique_ptr<T, Deleter> ptr) { return ptr; }
+    std::pair<T*, Deleter> makeUnique(std::unique_ptr<T, Deleter> ptr) {
+      auto deleter = ptr.get_deleter();
+      return std::make_pair(ptr.release(), deleter);
+    }
 
-    void addBack(std::unique_ptr<T, Deleter> iItem) {
+    void addBack(std::pair<T*, Deleter> iItem) {
       m_availableQueue.push(std::move(iItem));
       --m_outstandingObjects;
     }
 
-    tbb::concurrent_queue<std::unique_ptr<T, Deleter>> m_availableQueue;
+    boost::lockfree::stack<std::pair<T*, Deleter>> m_availableQueue;
     std::atomic<size_t> m_outstandingObjects;
   };
 

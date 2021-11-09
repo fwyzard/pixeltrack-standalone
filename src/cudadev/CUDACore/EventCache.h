@@ -45,7 +45,7 @@ namespace cms {
         int device_ = -1;
       };
 
-      std::vector<edm::ReusableObjectHolder<BareEvent, Deleter>> cache_;
+      std::unique_ptr<edm::ReusableObjectHolder<BareEvent, Deleter>[]> cache_;
     };
 
     // Gets the global instance of a EventCache

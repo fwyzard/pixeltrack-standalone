@@ -14,7 +14,7 @@ namespace cms::cuda {
 
   // StreamCache should be constructed by the first call to
   // getStreamCache() only if we have CUDA devices present
-  StreamCache::StreamCache() : cache_(deviceCount()) {}
+  StreamCache::StreamCache() : cache_(std::make_unique<edm::ReusableObjectHolder<BareStream, Deleter>[]>(deviceCount())) {}
 
   SharedStreamPtr StreamCache::get() {
     const auto dev = currentDevice();
@@ -31,8 +31,7 @@ namespace cms::cuda {
     // mostly for the unit tests, where the function-static
     // StreamCache lives through multiple tests (and go through
     // multiple shutdowns of the framework).
-    cache_.clear();
-    cache_.resize(deviceCount());
+    cache_ = std::make_unique<edm::ReusableObjectHolder<BareStream, Deleter>[]>(deviceCount());
   }
 
   StreamCache& getStreamCache() {

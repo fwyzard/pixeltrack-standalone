@@ -15,7 +15,7 @@ namespace cms::cuda {
 
   // EventCache should be constructed by the first call to
   // getEventCache() only if we have CUDA devices present
-  EventCache::EventCache() : cache_(deviceCount()) {}
+  EventCache::EventCache() : cache_(std::make_unique<edm::ReusableObjectHolder<BareEvent, Deleter>[]>(deviceCount())) {}
 
   SharedEventPtr EventCache::get() {
     const auto dev = currentDevice();
@@ -56,8 +56,7 @@ namespace cms::cuda {
     // mostly for the unit tests, where the function-static
     // EventCache lives through multiple tests (and go through
     // multiple shutdowns of the framework).
-    cache_.clear();
-    cache_.resize(deviceCount());
+    cache_ = std::make_unique<edm::ReusableObjectHolder<BareEvent, Deleter>[]>(deviceCount());
   }
 
   EventCache& getEventCache() {

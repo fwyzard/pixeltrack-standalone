@@ -38,7 +38,7 @@ namespace cms {
         int device_ = -1;
       };
 
-      std::vector<edm::ReusableObjectHolder<BareStream, Deleter>> cache_;
+      std::unique_ptr<edm::ReusableObjectHolder<BareStream, Deleter>[]> cache_;
     };
 
     // Gets the global instance of a StreamCache
