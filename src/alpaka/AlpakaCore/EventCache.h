@@ -9,7 +9,7 @@
 
 #include "AlpakaCore/alpakaConfig.h"
 #include "AlpakaCore/getDevIndex.h"
-#include "Framework/ReusableObjectHolder.h"
+#include "Framework/ObjectCache.h"
 
 namespace cms::alpakatools {
 
@@ -21,7 +21,7 @@ namespace cms::alpakatools {
 
     // EventCache should be constructed by the first call to
     // getEventCache() only if we have CUDA devices present
-    EventCache() : cache_(alpaka::getDevCount<Platform>()) {}
+    EventCache() : cache_{std::make_unique<internal::ObjectCache<Event>[]>(alpaka::getDevCount<Platform>())} {}
 
     // Gets a (cached) CUDA event for the current device. The event
     // will be returned to the cache by the shared_ptr destructor.
@@ -54,21 +54,20 @@ namespace cms::alpakatools {
 
   private:
     std::shared_ptr<Event> getImpl(Device const& dev) {
-      return cache_[cms::alpakatools::getDevIndex(dev)].makeOrGet([dev]() { return std::make_unique<Event>(dev); });
+      return cache_[cms::alpakatools::getDevIndex(dev)].get(std::in_place, dev);
     }
 
     // Not thread safe, intended to be called only from CUDAService destructor
     void clear() {
       // Reset the contents of the caches, but leave an
-      // edm::ReusableObjectHolder alive for each device. This is needed
+      // internal::ObjectCache alive for each device. This is needed
       // mostly for the unit tests, where the function-static
       // EventCache lives through multiple tests (and go through
       // multiple shutdowns of the framework).
-      cache_.clear();
-      cache_.resize(alpaka::getDevCount<Platform>());
+      cache_ = std::make_unique<internal::ObjectCache<Event>[]>(alpaka::getDevCount<Platform>());
     }
 
-    std::vector<edm::ReusableObjectHolder<Event>> cache_;
+    std::unique_ptr<internal::ObjectCache<Event>[]> cache_;
   };
 
   // Gets the global instance of a EventCache
