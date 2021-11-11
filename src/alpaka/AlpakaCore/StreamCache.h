@@ -2,7 +2,8 @@
 #define HeterogeneousCore_AlpakaUtilities_StreamCache_h
 
 #include <memory>
-#include <vector>
+
+#include <alpaka/alpaka.hpp>
 
 #include "AlpakaCore/alpakaConfig.h"
 #include "AlpakaCore/getDevIndex.h"
@@ -12,10 +13,10 @@ namespace cms::alpakatools {
 
   template <typename Queue>
   class StreamCache {
+  public:
     using Device = alpaka::Dev<Queue>;
     using Platform = alpaka::Pltf<Device>;
 
-  public:
     // StreamCache should be constructed by the first call to
     // getStreamCache() only if we have CUDA devices present
     StreamCache() : cache_(alpaka::getDevCount<Platform>()) {}
@@ -23,12 +24,12 @@ namespace cms::alpakatools {
     // Gets a (cached) CUDA stream for the current device. The stream
     // will be returned to the cache by the shared_ptr destructor.
     // This function is thread safe
-    ALPAKA_FN_HOST std::shared_ptr<Queue> get(Device const& dev) {
+    std::shared_ptr<Queue> get(Device const& dev) {
       return cache_[cms::alpakatools::getDevIndex(dev)].makeOrGet([dev]() { return std::make_unique<Queue>(dev); });
     }
 
   private:
-    // not thread safe, intended to be called only from CUDAService destructor
+    // Not thread safe, intended to be called only from CUDAService destructor
     void clear() {
       // Reset the contents of the caches, but leave an
       // edm::ReusableObjectHolder alive for each device. This is needed

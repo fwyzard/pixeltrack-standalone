@@ -24,14 +24,12 @@ namespace cms::alpakatools {
     EventCache() : cache_(alpaka::getDevCount<Platform>()) {}
 
     // Gets a (cached) CUDA event for the current device. The event
-    // will be returned to the cache by the shared_ptr destructor. The
-    // returned event is guaranteed to be in the state where all
+    // will be returned to the cache by the shared_ptr destructor.
+    // The returned event is guaranteed to be in the state where all
     // captured work has completed, i.e. cudaEventQuery() == cudaSuccess.
-    //
     // This function is thread safe
-    template <typename Device>
-    std::shared_ptr<Event> get(Device dev) {
-      auto event = makeOrGet(dev);
+    std::shared_ptr<Event> get(Device const& dev) {
+      auto event = getImpl(dev);
       // captured work has completed, or a just-created event
       if (alpaka::isComplete(*event)) {
         return event;
@@ -44,21 +42,22 @@ namespace cms::alpakatools {
       std::vector<std::shared_ptr<Event>> ptrs{std::move(event)};
       bool completed;
       do {
-        event = makeOrGet(dev);
+        event = getImpl(dev);
         completed = alpaka::isComplete(*event);
         if (not completed) {
           ptrs.emplace_back(std::move(event));
         }
       } while (not completed);
+      // The events stored in ptrs are automatically returned to the cache.
       return event;
     }
 
   private:
-    std::shared_ptr<Event> makeOrGet(Device dev) {
+    std::shared_ptr<Event> getImpl(Device const& dev) {
       return cache_[cms::alpakatools::getDevIndex(dev)].makeOrGet([dev]() { return std::make_unique<Event>(dev); });
     }
 
-    // not thread safe, intended to be called only from CUDAService destructor
+    // Not thread safe, intended to be called only from CUDAService destructor
     void clear() {
       // Reset the contents of the caches, but leave an
       // edm::ReusableObjectHolder alive for each device. This is needed
