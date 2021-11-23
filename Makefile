@@ -476,10 +476,10 @@ $(TBB_LIB): $(TBB_BASE) $(TBB_LIBDIR)
 external_eigen: $(EIGEN_BASE)
 
 $(EIGEN_BASE):
-	# from Eigen master branch as of 2021.08.18
-	git clone -b cms/master/82dd3710dac619448f50331c1d6a35da673f764a https://github.com/cms-externals/eigen-git-mirror.git $@
-	# include all Patatrack updates
-	cd $@ && git reset --hard 733e6166b2f8b4edd23da33985187fd60903e9ca
+	# from Eigen master branch as of 2021.11.09
+	git clone -b cms/master/675b72e44bd5a6177aebddc0ca6e754d6cd19dc7 https://github.com/cms-externals/eigen-git-mirror.git $@
+	# include all CMS and Patatrack updates
+	cd $@ && git reset --hard 46f072265231c56d9cbad74ab0af2fb2ae576d5a
 
 # Boost
 .PHONY: external_boost
