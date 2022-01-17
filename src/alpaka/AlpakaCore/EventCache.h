@@ -19,44 +19,19 @@ namespace cms::alpakatools {
     using Device = alpaka::Dev<Event>;
     using Platform = alpaka::Pltf<Device>;
 
-    // EventCache should be constructed by the first call to
-    // getEventCache() only if we have CUDA devices present
-    EventCache() : cache_{std::make_unique<internal::ObjectCache<Event>[]>(alpaka::getDevCount<Platform>())} {}
+    // EventCache should be constructed by the first call to getEventCache()
+    EventCache() : cache_{std::make_unique<Cache[]>(alpaka::getDevCount<Platform>())} {}
 
-    // Gets a (cached) CUDA event for the current device. The event
-    // will be returned to the cache by the shared_ptr destructor.
+    // Gets a (cached) alpaka event for the specified device.
+    // The event will be returned to the cache by the shared_ptr destructor.
     // The returned event is guaranteed to be in the state where all
-    // captured work has completed, i.e. cudaEventQuery() == cudaSuccess.
+    // captured work has completed, i.e. alpaka::isComplete(...) == true.
     // This function is thread safe
     std::shared_ptr<Event> get(Device const& dev) {
-      auto event = getImpl(dev);
-      // captured work has completed, or a just-created event
-      if (alpaka::isComplete(*event)) {
-        return event;
-      }
-
-      // Got an event with incomplete captured work. Try again until we
-      // get a completed (or a just-created) event. Need to keep all
-      // incomplete events until a completed event is found in order to
-      // avoid ping-pong with an incomplete event.
-      std::vector<std::shared_ptr<Event>> ptrs{std::move(event)};
-      bool completed;
-      do {
-        event = getImpl(dev);
-        completed = alpaka::isComplete(*event);
-        if (not completed) {
-          ptrs.emplace_back(std::move(event));
-        }
-      } while (not completed);
-      // The events stored in ptrs are automatically returned to the cache.
-      return event;
-    }
-
-  private:
-    std::shared_ptr<Event> getImpl(Device const& dev) {
       return cache_[cms::alpakatools::getDevIndex(dev)].get(std::in_place, dev);
     }
 
+  private:
     // Not thread safe, intended to be called only from CUDAService destructor
     void clear() {
       // Reset the contents of the caches, but leave an
@@ -64,13 +39,18 @@ namespace cms::alpakatools {
       // mostly for the unit tests, where the function-static
       // EventCache lives through multiple tests (and go through
       // multiple shutdowns of the framework).
-      cache_ = std::make_unique<internal::ObjectCache<Event>[]>(alpaka::getDevCount<Platform>());
+      cache_ = std::make_unique<Cache[]>(alpaka::getDevCount<Platform>());
     }
 
-    std::unique_ptr<internal::ObjectCache<Event>[]> cache_;
+    struct IsReady {
+      bool operator()(Event const& e){ return alpaka::isComplete(e); }
+    };
+    using Cache = internal::ObjectCache<Event, IsReady>;
+
+    std::unique_ptr<Cache[]> cache_;
   };
 
-  // Gets the global instance of a EventCache
+  // Gets the global instance of an EventCache
   // This function is thread safe
   template <typename Event>
   EventCache<Event>& getEventCache() {
