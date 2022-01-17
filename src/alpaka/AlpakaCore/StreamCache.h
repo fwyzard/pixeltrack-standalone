@@ -19,7 +19,7 @@ namespace cms::alpakatools {
 
     // StreamCache should be constructed by the first call to
     // getStreamCache() only if we have CUDA devices present
-    StreamCache() : cache_{std::make_unique<internal::ObjectCache<Queue>[]>(alpaka::getDevCount<Platform>())} {}
+    StreamCache() : cache_{std::make_unique<Cache[]>(alpaka::getDevCount<Platform>())} {}
 
     // Gets a (cached) CUDA stream for the current device. The stream
     // will be returned to the cache by the shared_ptr destructor.
@@ -36,10 +36,15 @@ namespace cms::alpakatools {
       // mostly for the unit tests, where the function-static
       // StreamCache lives through multiple tests (and go through
       // multiple shutdowns of the framework).
-      cache_ = std::make_unique<internal::ObjectCache<Queue>[]>(alpaka::getDevCount<Platform>());
+      cache_ = std::make_unique<Cache[]>(alpaka::getDevCount<Platform>());
     }
 
-    std::unique_ptr<internal::ObjectCache<Queue>[]> cache_;
+    struct IsReady {
+      bool operator()(Queue const& queue){ return alpaka::empty(queue); }
+    };
+    using Cache = internal::ObjectCache<Queue, IsReady>;
+
+    std::unique_ptr<Cache[]> cache_;
   };
 
   // Gets the global instance of a StreamCache
